@@ -1,0 +1,3 @@
+[submodule "Merlin"]
+	path = Merlin
+	url = https://github.com/JulesTopart/Merlin.git
