@@ -10,9 +10,13 @@ using namespace Merlin::Tensor;
 struct Ray {
 	alignas(16) glm::vec3 origin; //Origin
 	alignas(16) glm::vec3 direction; //Direction
+	alignas(16) glm::vec3 start; //Direction
 	alignas(16) glm::vec3 end; //Direction
-	int hitID;
-	int bounce;
+	GLuint firstHitID;
+	GLuint lastHitID;
+	GLuint bounce;
+	GLboolean hitSky;
+	GLboolean hitDiffuse;
 };
 
 struct Facet {
@@ -22,8 +26,13 @@ struct Facet {
 	alignas(16) glm::vec3 p4;
 	alignas(16) glm::vec3 normal;
 	GLuint id;
+	GLuint specular;
 };
 
+struct Bin {
+	int start;
+	int end;
+};
 
 class TMRTLayer : public Merlin::Layer
 {
@@ -63,6 +72,7 @@ private:
 	Shared<ParticleSystem> rays;
 	Shared<SSBO> rayBuffer;
 	Shared<SSBO> facetBuffer;
+	Shared<SSBO> binBuffer;
 
 	Shared<ComputeShader> init;
 	Shared<ComputeShader> raytracing;
@@ -81,4 +91,6 @@ private:
 	bool _drawGeom = true;
 	bool _drawRays = true;
 	bool _drawRaycast = true;
+
+	bool paused = true;
 };

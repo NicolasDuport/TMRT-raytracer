@@ -3,7 +3,7 @@
 layout (location = 0) out vec4 o_Color;
 
 in vec3 position;
-in vec3 normal;
+flat in vec3 normal;
 flat in vec3 color;
 
 uniform vec3 lightPos;

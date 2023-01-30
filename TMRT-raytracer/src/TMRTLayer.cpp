@@ -46,7 +46,7 @@ glm::vec3 computeFacetNormal(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3) {
 	auto x = u.y * v.z - u.z * v.y;
 	auto y = u.z * v.x - u.x * v.z;
 	auto z = u.x * v.y - u.y * v.x;
-	return glm::vec3(x, y, z);
+	return normalize(glm::vec3(x, y, z));
 }
 
 Vertices parseVerticies(std::vector<float> data) {
@@ -55,7 +55,7 @@ Vertices parseVerticies(std::vector<float> data) {
 	int index = 0;
 	for (size_t i = 0; i < vertices.size(); i++) {
 		vertices[i].position = glm::vec3(data[index], data[index + 1], data[index + 2]);
-		vertices[i].color = data[index + 3] == 1.0f ? glm::vec3(0.2f, 0.2f, 1.0f) : glm::vec3(0.3f,0.3f,0.3f);
+		vertices[i].color = data[index + 3] > 300.0f ? glm::vec3(0.2f, 0.2f, 1.0f) : glm::vec3(0.3f,0.3f,0.3f);
 		index += 4;
 	}
 	return vertices;
@@ -68,8 +68,8 @@ Indices parseIndices(Vertices& vertices, std::vector<GLuint> data) {
 		if (index < 3) {
 			indices.push_back(data[i] - 1);
 			if (index == 2) vertices[indices[indices.size() - 1]].normal = computeFacetNormal(vertices[indices[indices.size() -3]].position, vertices[indices[indices.size() -2]].position, vertices[indices[indices.size()-1]].position);
-			if (index == 2) vertices[indices[indices.size() - 2]].normal = computeFacetNormal(vertices[indices[indices.size() -3]].position, vertices[indices[indices.size() -2]].position, vertices[indices[indices.size()-1]].position);
-			if (index == 2) vertices[indices[indices.size() - 3]].normal = computeFacetNormal(vertices[indices[indices.size() -3]].position, vertices[indices[indices.size() -2]].position, vertices[indices[indices.size()-1]].position);
+			//if (index == 2) vertices[indices[indices.size() - 2]].normal = computeFacetNormal(vertices[indices[indices.size() -3]].position, vertices[indices[indices.size() -2]].position, vertices[indices[indices.size()-1]].position);
+			//if (index == 2) vertices[indices[indices.size() - 3]].normal = computeFacetNormal(vertices[indices[indices.size() -3]].position, vertices[indices[indices.size() -2]].position, vertices[indices[indices.size()-1]].position);
 			index++;
 		} else{
 			if (data[i] != GLuint(-1)) { //Quad
@@ -77,8 +77,8 @@ Indices parseIndices(Vertices& vertices, std::vector<GLuint> data) {
 				indices.push_back(data[i - 1] - 1);
 				indices.push_back(data[i] - 1);
 				vertices[indices[indices.size()-1]].normal = computeFacetNormal(vertices[indices[indices.size()-3]].position, vertices[indices[indices.size() - 2]].position, vertices[indices[indices.size()-1]].position);
-				vertices[indices[indices.size()-2]].normal = computeFacetNormal(vertices[indices[indices.size()-3]].position, vertices[indices[indices.size() - 2]].position, vertices[indices[indices.size()-1]].position);
-				vertices[indices[indices.size()-3]].normal = computeFacetNormal(vertices[indices[indices.size()-3]].position, vertices[indices[indices.size() - 2]].position, vertices[indices[indices.size()-1]].position);
+				//vertices[indices[indices.size()-2]].normal = computeFacetNormal(vertices[indices[indices.size()-3]].position, vertices[indices[indices.size() - 2]].position, vertices[indices[indices.size()-1]].position);
+				//vertices[indices[indices.size()-3]].normal = computeFacetNormal(vertices[indices[indices.size()-3]].position, vertices[indices[indices.size() - 2]].position, vertices[indices[indices.size()-1]].position);
 			}
 			index = 0;
 		}
@@ -101,7 +101,7 @@ std::vector<Facet> parseFacets(Vertices& vertices, std::vector<GLuint> data) {
 			fc.p1 = vertices[fIndices[0]].position;
 			fc.p2 = vertices[fIndices[1]].position;
 			fc.p3 = vertices[fIndices[2]].position;
-			fc.normal = vertices[fIndices[0]].normal;
+			fc.normal = vertices[fIndices[2]].normal;
 			if (data[i] != GLuint(-1)) { //Quad
 				fIndices[index] = (data[i] - 1);
 				fc.p4 = vertices[fIndices[3]].position;
@@ -131,6 +131,15 @@ TMRTLayer::TMRTLayer() {
 TMRTLayer::~TMRTLayer(){
 }
 
+
+int hash(glm::vec3 p, int res) {
+	int ix = p.x / (0.05 / float(res));
+	int iy = p.y / (0.05 / float(res));
+	int iz = p.z / (0.05 / float(res));
+
+	return ix + iy * res + iz * res * res;
+}
+
 void TMRTLayer::OnAttach(){
 	EnableGLDebugging();
 	Window* wd = &Application::Get().GetWindow();
@@ -142,6 +151,7 @@ void TMRTLayer::OnAttach(){
 
 	// -- Load Geometry--
 	std::vector<GLuint> indices_data;//v0, v1, v2, v4 (v4 = -1) It's Triangle
+	std::vector<GLuint> material_data;//Material specular or diffuse
 	std::vector<float> vertices_data; //xyz + temperature
 	std::vector<float> rays_data;//xyz
 	Vertices vertices;
@@ -153,10 +163,16 @@ void TMRTLayer::OnAttach(){
 	LoadBinaryFile<float>("assets/geometry/rayons.12800.float3", rays_data);
 	LoadBinaryFile<float>("assets/geometry/vertices.float3", vertices_data);
 	LoadBinaryFile<GLuint>("assets/geometry/indices.uint", indices_data);
+	LoadBinaryFile<GLuint>("assets/geometry/materials.uint", material_data);
 
 	vertices = parseVerticies(vertices_data);
 	indices = parseIndices(vertices, indices_data);
 	facets = parseFacets(vertices, indices_data);
+
+	for (int i = 0; i < facets.size(); i++) {
+		facets[i].specular = material_data[i];
+	}
+
 	rayArray = parseRays(rays_data);
 
 	// ---- Init Rendering ----
@@ -207,6 +223,52 @@ void TMRTLayer::OnAttach(){
 	rays->SetPrimitive(line);
 	
 
+
+	/*
+	int hashResolution = 50;
+
+	std::vector<std::pair<int, int>> hashlist;
+	{
+		Console::print() << "Generating hash..." << Console::endl;
+		for (int i(0); i < facets.size(); i++) {
+			//Compute spatial hash
+			hashlist.push_back(std::make_pair(hash(facets[i].p1, hashResolution), i));
+			if (i % (facets.size() / 100) == 0) Console::printProgress(float(float(i) / float(facets.size())));
+		}
+		Console::printProgress(1.0f);
+		Console::print() << Console::endl;
+		std::sort(hashlist.begin(), hashlist.end()); //Sort list
+	}
+
+	std::vector<Bin> bins;
+	std::vector<Facet> sorted_facets;
+	{
+		Console::print() << "Sorting nodes..." << Console::endl;
+		int hash = 0;
+		for (int i(0); i < hashlist.size(); i++) {
+			if (hash != hashlist[i].first) {
+				if (bins.size() > 0)bins[bins.size() - 1].end = i - 1;
+				bins.emplace_back();
+				bins[bins.size() - 1].start = i;
+				hash = hashlist[i].first;
+			}
+			sorted_facets.push_back(facets[hashlist[i].second]);
+			if (i % (hashlist.size() / 100) == 0) Console::printProgress(float(float(i) / float(hashlist.size())));
+		};
+		Console::printProgress(1.0f);
+		Console::print() << Console::endl;
+	}
+
+
+	facetBuffer->Allocate<Facet>(sorted_facets);
+
+
+	binBuffer = CreateShared<SSBO>("BinBuffer");
+	binBuffer->SetBindingPoint(2);
+	binBuffer->Allocate<Bin>(bins);
+	*/
+
+
 	// ---- GPU Data ----	
 	//Load to GPU
 	rayBuffer = CreateShared<SSBO>("RayBuffer");
@@ -222,6 +284,25 @@ void TMRTLayer::OnAttach(){
 	init->Compile("assets/shaders/init.cs.glsl");
 	raytracing = CreateShared<ComputeShader>("raytracing");
 	raytracing->Compile("assets/shaders/raytracing.cs.glsl");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	rays->AddStorageBuffer(rayBuffer);
 	rays->AddStorageBuffer(facetBuffer);
@@ -243,9 +324,8 @@ void TMRTLayer::OnAttach(){
 	//saveRays();
 
 
-
 	//Set uniforms of rendering shaders
-	camera->SetPosition(TMRT_origin);
+	camera->SetPosition(TMRT_origin - glm::vec3(3,0,0));
 
 	modelShader->Use();
 	modelShader->SetUniform3f("lightPos", glm::vec3(30,30,200));
@@ -267,8 +347,12 @@ void TMRTLayer::saveRays() {
 
 	std::ofstream file("file.bin", std::ios::binary);
 	for (int i = 0; i < result.size(); i++) {
-		int num = result[i].hitID;
+		int num = result[i].firstHitID;
 		file.write((char*)&num, sizeof(num));
+		int last = result[i].lastHitID;
+		file.write((char*)&last, sizeof(last));
+		int bounce = result[i].bounce;
+		file.write((char*)&bounce, sizeof(bounce));
 	}
 	file.close();
 }
@@ -326,6 +410,8 @@ bool TMRTLayer::OnClick(MouseButtonPressedEvent& e) {
 bool TMRTLayer::OnRelease(MouseButtonReleasedEvent& e) {
 	return false;
 }
+
+int i = 0;
 
 void TMRTLayer::OnUpdate(Timestep ts){
 	updateFPS(ts);
