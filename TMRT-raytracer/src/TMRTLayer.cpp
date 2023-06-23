@@ -340,6 +340,7 @@ void TMRTLayer::OnAttach(){
 }
 
 void TMRTLayer::saveRays() {
+	rayBuffer->Bind();
 	std::vector<Ray> result;
 	result.resize(rayArray.size());
 
@@ -347,12 +348,25 @@ void TMRTLayer::saveRays() {
 
 	std::ofstream file("file.bin", std::ios::binary);
 	for (int i = 0; i < result.size(); i++) {
-		int num = result[i].firstHitID;
+		//Out Last hit facet
+		 float num = result[i].lastHitID;
+
+		//Out number of bounce
+		 float bounce = result[i].bounce;
+
+		 float hitSky = result[i].hitSky;
+
+		//Out last reflect direction
+		float x = result[i].direction.x;
+		float y = result[i].direction.y;
+		float z = result[i].direction.z;
+
 		file.write((char*)&num, sizeof(num));
-		int last = result[i].lastHitID;
-		file.write((char*)&last, sizeof(last));
-		int bounce = result[i].bounce;
 		file.write((char*)&bounce, sizeof(bounce));
+		file.write((char*)&hitSky, sizeof(hitSky));
+		file.write((char*)&x, sizeof(x));
+		file.write((char*)&y, sizeof(y));
+		file.write((char*)&z, sizeof(z));
 	}
 	file.close();
 }
