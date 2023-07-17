@@ -17,6 +17,19 @@ layout (std430, binding = 1) buffer RayBuffer {
   Ray rays[];
 };
 
+
+struct Facet {
+    vec4 vertex[4];
+    vec3 normal;
+    uint id;
+    uint specular;
+};
+
+layout (std430, binding = 2) buffer FacetBuffer {
+    Facet facets[];
+};
+
+
 layout (location = 0) in vec3 _position;
 layout (location = 1) in vec3 _normal;
 layout (location = 2) in vec3 _color;
@@ -45,7 +58,7 @@ void main() {
 		}else{
 			if(rays[gl_InstanceID].bounce == 1){
 				color = vec3(0,1,0);
-			}else if(rays[gl_InstanceID].bounce > 1) color = vec3(1,0,0);
+			}else if(rays[gl_InstanceID].bounce > 1) color = vec3(1,0,0) + vec3(facets[0].vertex[0]*0.0001);
 			else color = vec3(1);
 		}
 

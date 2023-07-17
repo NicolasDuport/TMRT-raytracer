@@ -17,7 +17,7 @@ struct Ray {
 
 
 struct Facet {
-    vec3 vertex[4];
+    vec4 vertex[4];
     vec3 normal;
     uint id;
     uint specular;

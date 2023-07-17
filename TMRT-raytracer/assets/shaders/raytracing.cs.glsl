@@ -18,7 +18,7 @@ struct Ray {
 };
 
 struct Facet {
-    vec3 vertex[4];
+    vec4 vertex[4];
     vec3 normal;
     uint id;
     uint specular;
@@ -76,10 +76,10 @@ bool raytrace(inout Ray r){
         //Intersection test, result : Facet id
         //Find the closest point of the geometry on the ray path
         
-        vec3 a = f.vertex[0];
-        vec3 b = f.vertex[1];
-        vec3 c = f.vertex[2];
-        vec3 d = f.vertex[3];
+        vec3 a = vec3(f.vertex[0]);
+        vec3 b = vec3(f.vertex[1]);
+        vec3 c = vec3(f.vertex[2]);
+        vec3 d = vec3(f.vertex[3]);
         
         if(d.x != -1){ //Quad
             hitFacet = IntersectTriangle( r, a, b, c , hit); //Test first tiangle

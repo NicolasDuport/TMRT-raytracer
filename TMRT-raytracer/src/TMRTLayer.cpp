@@ -160,7 +160,7 @@ void TMRTLayer::OnAttach(){
 	//std::vector<Ray> rayArray;//Now in the header
 
 	//LoadBinaryFile<float>("assets/geometry/rayons.float3", rays_data);
-	LoadBinaryFile<float>("assets/geometry/rayons.12800.float3", rays_data);
+	LoadBinaryFile<float>("assets/geometry/rayons.128000.float3", rays_data);
 	LoadBinaryFile<float>("assets/geometry/vertices.float3", vertices_data);
 	LoadBinaryFile<GLuint>("assets/geometry/indices.uint", indices_data);
 	LoadBinaryFile<GLuint>("assets/geometry/materials.uint", material_data);
@@ -310,8 +310,9 @@ void TMRTLayer::OnAttach(){
 	rays->AddComputeShader(init);
 	rays->AddComputeShader(raytracing);
 
-	glm::vec3 TMRT_origin = glm::vec3(30.5, 10.5, 1.5);
-
+	
+	//glm::vec3 TMRT_origin = glm::vec3(30.5, 30.5, 1.5);
+	//glm::vec3 TMRT_origin = glm::vec3(36.7, 51.1, 1.5);
 	init->Use();
 	//rays->Translate(TMRT_origin);
 	init->SetUniform3f("origin", TMRT_origin);
@@ -340,16 +341,17 @@ void TMRTLayer::OnAttach(){
 }
 
 void TMRTLayer::saveRays() {
-	rayBuffer->Bind();
-	std::vector<Ray> result;
+	rayBuffer->Bind(); //Activate GPU array
+	std::vector<Ray> result; //Create CPU array
 	result.resize(rayArray.size());
 
-	memcpy(result.data(), rayBuffer->Map(), result.size() * sizeof(Ray));
+	memcpy(result.data(), rayBuffer->Map(), result.size() * sizeof(Ray)); // Download Ray data from GPU to CPU
 
 	std::ofstream file("file.bin", std::ios::binary);
 	for (int i = 0; i < result.size(); i++) {
 		//Out Last hit facet
-		 float num = result[i].lastHitID;
+		 float first = result[i].firstHitID;
+		 float last = result[i].lastHitID;
 
 		//Out number of bounce
 		 float bounce = result[i].bounce;
@@ -361,7 +363,8 @@ void TMRTLayer::saveRays() {
 		float y = result[i].direction.y;
 		float z = result[i].direction.z;
 
-		file.write((char*)&num, sizeof(num));
+		file.write((char*)&first, sizeof(first));
+		file.write((char*)&last, sizeof(last));
 		file.write((char*)&bounce, sizeof(bounce));
 		file.write((char*)&hitSky, sizeof(hitSky));
 		file.write((char*)&x, sizeof(x));
@@ -461,9 +464,19 @@ void TMRTLayer::OnImGuiRender()
 		Console::success("Raytracing") << "Computation finished in " << detla << "s (" << detla*1000.0 << " ms)" << Console::endl;
 	}
 	if (ImGui::Button("Reset simulation")) {
-		rayBuffer->Allocate(rayArray);
+		//rayBuffer->Allocate(rayArray);
 		rays->Execute(init);
 	}
+	if (ImGui::Button("Set TMRT Origin")) {
+		TMRT_origin = camera->GetPosition();
+
+		init->Use();
+		init->SetUniform3f("origin", TMRT_origin);
+		raytracing->Use();
+		raytracing->SetUniform3f("origin", TMRT_origin);
+		rays->Execute(init);
+	}
+
 	if (ImGui::Button("Save result")) {
 		saveRays();
 	}
@@ -471,7 +484,7 @@ void TMRTLayer::OnImGuiRender()
 	ImGui::Checkbox("Draw Geometry", &_drawGeom);
 	ImGui::Checkbox("Draw Rays", &_drawRays);
 
-	if (ImGui::DragFloat3("Camera position", &camera_translation.x, -100.0f, 100.0f)) {
+	if (ImGui::DragFloat3("Camera position", &camera_translation.x, 1.0, -100.0f, 100.0f)) {
 		camera->SetPosition(camera_translation);
 	}
 	if (ImGui::SliderFloat("Camera speed", &camera_speed, 0.0, 100.0f)) {

@@ -83,6 +83,8 @@ private:
 	Shared<Camera> camera;
 	Shared<CameraController> cameraController;
 
+	glm::vec3 TMRT_origin = glm::vec3(29, 9.3, 1.5);
+
 	//Ui
 	glm::vec3 camera_translation = { 0.0f, 0.0f, 0.0f };
 	float camera_speed = 1;
